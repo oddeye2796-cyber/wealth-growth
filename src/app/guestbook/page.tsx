@@ -8,10 +8,10 @@ export default function GuestbookPage() {
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://giscus.app/client.js';
-    script.setAttribute('data-repo', 'oddeyeber/wealth-growth'); // 실제 저장소 이름
-    script.setAttribute('data-repo-id', 'R_kgDONGq4FA'); // 초기화 시 필요 (Giscus 설정에서 확인 가능)
+    script.setAttribute('data-repo', 'oddeye2796-cyber/wealth-growth'); 
+    script.setAttribute('data-repo-id', 'R_kgDOR5eQ9Q'); 
     script.setAttribute('data-category', 'Announcements');
-    script.setAttribute('data-category-id', 'DIC_kwDONGq4FM4Cjv9_');
+    script.setAttribute('data-category-id', 'DIC_kwDOR5eQ9c4C6Cuq');
     script.setAttribute('data-mapping', 'pathname');
     script.setAttribute('data-strict', '0');
     script.setAttribute('data-reactions-enabled', '1');
