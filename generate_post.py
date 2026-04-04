@@ -1,15 +1,19 @@
 import os
+import requests
+import json
 from datetime import datetime
 import random
-from google import genai
+import time
 
-# 1. API 키 로드
+# 1. API 키 및 설정 로드
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     print("Error: GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     exit(1)
 
-client = genai.Client(api_key=api_key)
+# API 엔드포인트 설정 (V1 Beta - 3.0 지원)
+model_name = "gemini-2.0-flash"
+api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
 # 2. 블로그 주제 리스트 풀 (무작위 선택)
 themes = [
@@ -50,22 +54,59 @@ prompt = f"""
    - H2(##) 및 H3(###) 태그를 적절히 사용하여 글의 가독성을 최대로 높임.
    - 내용 중간에 이 주제와 어울리는 유명인의 성공 명언 1개를 인용구(> )로 반드시 포함할 것.
    - 결론부에 당장 오늘부터 실천할 수 있는 구체적인 행동 가이드(Call to Action) 포함.
-   - 글 마지막에 다음과 같은 문구와 광고 배너를 반드시 포함:
-     *이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.*
-     <iframe src="https://coupa.ng/cmdXxM" width="100%" height="36" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+   - 글 마지막에 아래 형식의 쿠팡 파트너스 링크를 반드시 한 개만 삽입할 것 (iframe 절대 금지):
+
+<a href="https://coupa.ng/cmdXxM" class="coupang-banner" target="_blank" rel="noopener noreferrer">📚 [이 주제와 어울리는 구체적인 도서명(예: 부자의 그릇, 역행자 등)] 보러가기 →<span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span></a>
+
+   (주의사항:
+    - href URL은 반드시 https://coupa.ng/cmdXxM 으로 고정. 절대 변경 금지.
+    - 링크 텍스트 안의 도서명만 실제 주제에 어울리게 교체할 것.
+    - <span> 태그는 반드시 위 예시처럼 <a> 태그 안에 포함할 것.
+    - <iframe>, <script> 태그는 X-Frame-Options 정책 위반으로 절대 사용 금지.
+    - 위 <a> 태그를 그대로 마크다운 파일에 삽입할 것. 코드블록(```)으로 감싸지 말 것.)
 5. 금지 사항: 결과물을 ```markdown ... ``` 코드 블록 안에 넣지 마세요. 첫째 줄이 바로 `---` 속성으로 시작해야 합니다.
 """
 
 print(f"[{today_date}] '{selected_theme}' 주제로 글쓰기를 AI에게 요청 중...")
 
-try:
-    response = client.models.generate_content(
-        model='gemini-2.0-flash',
-        contents=prompt
-    )
-    content = response.text
-except Exception as e:
-    print(f"API 요청 중 에러가 발생했습니다: {e}")
+payload = {
+    "contents": [{"parts": [{"text": prompt}]}]
+}
+headers = {"Content-Type": "application/json"}
+
+# 재시도 로직 추가 (최대 3회)
+max_retries = 3
+content = None
+
+for i in range(max_retries):
+    try:
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        
+        if response.status_code == 429:
+            print(f"[Retry {i+1}/{max_retries}] Quota exceeded. Waiting 15s...")
+            time.sleep(15)
+            continue
+            
+        response.raise_for_status()
+        result = response.json()
+        
+        if 'candidates' in result and len(result['candidates']) > 0:
+            content = result['candidates'][0]['content']['parts'][0]['text']
+            break
+        else:
+            raise Exception(f"AI response error: {result}")
+
+    except Exception as e:
+        if i == max_retries - 1:
+            print(f"Error: Final API request failed: {e}")
+            if 'response' in locals() and hasattr(response, 'text'):
+                print(f"Detail: {response.text}")
+            exit(1)
+        print(f"Warning: Temporary error ({e}). Retrying...")
+        time.sleep(5)
+
+if not content:
+    print("Error: Post generation failed.")
     exit(1)
 
 # AI가 간혹 코드 블록 마크업을 넣어서 출력하는 경우를 대비한 방어 로직
@@ -92,4 +133,4 @@ filepath = os.path.join(output_dir, f"{slug}.md")
 with open(filepath, "w", encoding="utf-8") as f:
     f.write(content)
 
-print(f"\n✅ 포스팅 성공: {filepath} 경로에 저장되었습니다!")
+print(f"\nSuccess: Post saved to {filepath}")

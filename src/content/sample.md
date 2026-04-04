@@ -22,6 +22,8 @@ tags: ["재테크", "자기계발", "마인드셋"]
 > "성공은 매일 반복되는 작은 노력들의 합이다." - 로버트 콜리어
 
 ---
-*이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 일정액의 수수료를 제공받을 수 있습니다.*
-<iframe src="https://coupa.ng/cmdXxM" width="100%" height="36" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
-[부자의 그릇 - 책 보러가기](https://link.coupang.com)
+
+<a href="https://coupa.ng/cmdXxM" target="_blank" rel="noopener noreferrer" class="coupang-banner">
+  📚 이번 주제와 관련된 추천 도서 - 부자의 그릇 보러가기 →
+  <span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span>
+</a>
