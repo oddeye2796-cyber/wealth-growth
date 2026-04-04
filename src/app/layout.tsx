@@ -22,7 +22,7 @@ export default function RootLayout({
           <Link href="/" className="logo">Daily Better</Link>
           <nav style={{display: 'flex', gap: '1rem'}}>
             <Link href="/" style={{color: 'var(--text-muted)', fontWeight: 500}}>Home</Link>
-            <Link href="/" style={{color: 'var(--text-muted)', fontWeight: 500}}>About</Link>
+            <Link href="/about" style={{color: 'var(--text-muted)', fontWeight: 500}}>About</Link>
           </nav>
         </header>
         <main className="container">
