@@ -23,4 +23,5 @@ tags: ["재테크", "자기계발", "마인드셋"]
 
 ---
 *이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 일정액의 수수료를 제공받을 수 있습니다.*
-*[부자의 그릇 - 책 보러가기](https://link.coupang.com)*
+<iframe src="https://coupa.ng/cmdXxM" width="100%" height="36" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+[부자의 그릇 - 책 보러가기](https://link.coupang.com)

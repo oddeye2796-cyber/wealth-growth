@@ -1,6 +1,7 @@
 import { getPostBySlug, getAllPosts } from '@/lib/posts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -45,7 +46,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       </div>
       
       <div className="markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
           {post.content}
         </ReactMarkdown>
       </div>
