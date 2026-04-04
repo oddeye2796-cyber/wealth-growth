@@ -28,6 +28,26 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   return (
     <article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: post.title,
+            description: post.excerpt,
+            datePublished: post.date,
+            author: {
+              '@type': 'Person',
+              name: 'Daily Better',
+            },
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `https://wealth-growth.vercel.app/posts/${slug}`,
+            },
+          }),
+        }}
+      />
       <div style={{ marginBottom: '2rem' }}>
         <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
           <ArrowLeft size={16} /> 홈으로 돌아가기
