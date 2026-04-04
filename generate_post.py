@@ -37,16 +37,15 @@ themes = [
 selected_theme = random.choice(themes)
 today_date = datetime.now().strftime('%Y-%m-%d')
 
-# 3. 쿠팡 파트너스 동적 링크 생성 함수 (Search Link format)
-def generate_coupang_link(query):
-    base_url = "https://link.coupang.com/re/AFFSRP"
-    params = {
-        "lptag": "AF2993619", # 사용자 고유 ID
-        "subid": "",
-        "pageKey": query
-    }
-    encoded_params = urllib.parse.urlencode(params)
-    return f"{base_url}?{encoded_params}"
+# 3. 쿠팡 파트너스 링크 생성 함수
+# AFFSDP: 상품 상세 페이지 (Product Details) - ID를 알 때 사용
+# AFFSRP: 상품 검색 결과 (Search Results) - 키워드로 검색할 때 사용
+def generate_coupang_link(query, is_id=False):
+    if is_id:
+        return f"https://link.coupang.com/re/AFFSDP?lptag=AF2993619&subid=&pageKey={query}"
+    else:
+        # 위젯으로 리다이렉트되는 것을 방지하기 위해 불필요한 파라미터 제외
+        return f"https://link.coupang.com/re/AFFSRP?lptag=AF2993619&pageKey={urllib.parse.quote(query)}"
 
 # 4. 프롬프트 작성 (SEO 및 Markdown 구조화)
 prompt = f"""
@@ -68,7 +67,7 @@ prompt = f"""
    - 결론부에 당장 오늘부터 실천할 수 있는 구체적인 행동 가이드(Call to Action) 포함.
    - 글 마지막에 아래 형식의 쿠팡 파트너스 링크를 반드시 한 개만 삽입할 것 (iframe 절대 금지):
 
-<a href="{{{{COUPANG_LINK}}}}" class="coupang-banner" target="_blank" rel="noopener noreferrer">📚 [이 주제와 어울리는 구체적인 도서명(예: 부자의 그릇, 역행자 등)] 보러가기 →<span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span></a>
+<a href="{{{{COUPANG_LINK}}}}" class="coupang-banner" target="_blank" rel="noopener noreferrer">📚 [이 주제와 어울리는 구체적인 도서명(예: 부자의 그릇, 역행자 등)] 상세 정보 확인하기 →<span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span></a>
 
    (주의사항:
     - href 속성값으로 반드시 '{{{{COUPANG_LINK}}}}' 플레이스홀더를 그대로 사용할 것.
@@ -137,7 +136,12 @@ content = content.strip()
 # 주제 또는 도서명을 기반으로 쿠팡 검색 링크 생성
 # (주제명에서 핵심 키워드만 추출하여 검색 결과 품질을 높임)
 search_query = selected_theme.split(":")[0].split(" ")[0] if ":" in selected_theme else selected_theme.split(" ")[0]
-dynamic_link = generate_coupang_link(search_query)
+
+# 특정 키워드의 경우 고정 상품 ID를 사용하여 전환율을 높임 (예시)
+if "그릇" in search_query or "부자의 그릇" in selected_theme:
+    dynamic_link = generate_coupang_link("4633275230", is_id=True) # '부자의 그릇' 고정 ID
+else:
+    dynamic_link = generate_coupang_link(search_query)
 
 content = content.replace("{{COUPANG_LINK}}", dynamic_link)
 
@@ -154,4 +158,4 @@ with open(filepath, "w", encoding="utf-8") as f:
     f.write(content)
 
 print(f"\nSuccess: Post saved to {filepath}")
-print(f"Dynamic Link generated for: {search_query}")
+print(f"Link generated for: {search_query} (Link: {dynamic_link})")
