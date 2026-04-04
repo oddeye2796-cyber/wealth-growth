@@ -1,0 +1,43 @@
+name: Generate Daily Blog Post
+
+on:
+  schedule:
+    # 매일 UTC 기준 23시 = 한국 시간(KST) 오전 8시에 글 작성 실행
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 직접 버튼을 눌러서 테스트 해볼 수 있도록 옵션 활성화
+
+permissions:
+  contents: write
+
+jobs:
+  generate_post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Generate Post with AI (Gemini)
+        env:
+          # GitHub Secrets에 등록된 키를 불러와서 자동 주입
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python generate_post.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "AI Blog Bot"
+          git config --global user.email "ai-bot@dailybetter.com"
+          git add src/content/*.md
+          git commit -m "docs: Auto-generated new blog post" || echo "No changes to commit"
+          git push
