@@ -60,7 +60,7 @@ print(f"[{today_date}] '{selected_theme}' 주제로 글쓰기를 AI에게 요청
 
 try:
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-2.0-flash',
         contents=prompt
     )
     content = response.text
