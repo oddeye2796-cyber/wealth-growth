@@ -23,7 +23,7 @@ tags: ["재테크", "자기계발", "마인드셋"]
 
 ---
 
-<a href="https://coupa.ng/cmdXxM" target="_blank" rel="noopener noreferrer" class="coupang-banner">
+<a href="https://link.coupang.com/re/AFFSRP?lptag=AF2993619&subid=&pageKey=%EB%B6%80%EC%9E%90%EC%9D%98+%EA%B7%B8%EB%A6%BB" target="_blank" rel="noopener noreferrer" class="coupang-banner">
   📚 이번 주제와 관련된 추천 도서 - 부자의 그릇 보러가기 →
   <span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span>
 </a>

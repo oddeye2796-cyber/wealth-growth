@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import random
 import time
+import urllib.parse
 
 # 1. API 키 및 설정 로드
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -36,7 +37,18 @@ themes = [
 selected_theme = random.choice(themes)
 today_date = datetime.now().strftime('%Y-%m-%d')
 
-# 3. 프롬프트 작성 (SEO 및 Markdown 구조화)
+# 3. 쿠팡 파트너스 동적 링크 생성 함수 (Search Link format)
+def generate_coupang_link(query):
+    base_url = "https://link.coupang.com/re/AFFSRP"
+    params = {
+        "lptag": "AF2993619", # 사용자 고유 ID
+        "subid": "",
+        "pageKey": query
+    }
+    encoded_params = urllib.parse.urlencode(params)
+    return f"{base_url}?{encoded_params}"
+
+# 4. 프롬프트 작성 (SEO 및 Markdown 구조화)
 prompt = f"""
 당신은 최고의 자기계발 및 재테크 전문가이자 구글 검색 SEO 최적화 전문 블로거입니다.
 다음 주제에 대해 블로그 포스팅을 작성해주세요: "{selected_theme}"
@@ -56,15 +68,15 @@ prompt = f"""
    - 결론부에 당장 오늘부터 실천할 수 있는 구체적인 행동 가이드(Call to Action) 포함.
    - 글 마지막에 아래 형식의 쿠팡 파트너스 링크를 반드시 한 개만 삽입할 것 (iframe 절대 금지):
 
-<a href="https://coupa.ng/cmdXxM" class="coupang-banner" target="_blank" rel="noopener noreferrer">📚 [이 주제와 어울리는 구체적인 도서명(예: 부자의 그릇, 역행자 등)] 보러가기 →<span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span></a>
+<a href="{{{{COUPANG_LINK}}}}" class="coupang-banner" target="_blank" rel="noopener noreferrer">📚 [이 주제와 어울리는 구체적인 도서명(예: 부자의 그릇, 역행자 등)] 보러가기 →<span>이 포스팅은 AI에 의해 자동 생성되었으며, 쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</span></a>
 
    (주의사항:
-    - href URL은 반드시 https://coupa.ng/cmdXxM 으로 고정. 절대 변경 금지.
+    - href 속성값으로 반드시 '{{{{COUPANG_LINK}}}}' 플레이스홀더를 그대로 사용할 것.
     - 링크 텍스트 안의 도서명만 실제 주제에 어울리게 교체할 것.
     - <span> 태그는 반드시 위 예시처럼 <a> 태그 안에 포함할 것.
-    - <iframe>, <script> 태그는 X-Frame-Options 정책 위반으로 절대 사용 금지.
+    - <iframe>, <script> 태그는 절대 사용 금지.
     - 위 <a> 태그를 그대로 마크다운 파일에 삽입할 것. 코드블록(```)으로 감싸지 말 것.)
-5. 금지 사항: 결과물을 ```markdown ... ``` 코드 블록 안에 넣지 마세요. 첫째 줄이 바로 `---` 속성으로 시작해야 합니다.
+5. 금지 사항: 결과물을 ```markdown ... ``` 코드 블록 안에 넣지 마세요. 첫째 줄이 바로 `---` 속성으로 시작해야 합니다. <iframe> 태그는 절대 사용 금지.
 """
 
 print(f"[{today_date}] '{selected_theme}' 주제로 글쓰기를 AI에게 요청 중...")
@@ -121,7 +133,15 @@ if content.endswith("```"):
 
 content = content.strip()
 
-# 4. 파일 저장
+# 5. 동적 링크 치환
+# 주제 또는 도서명을 기반으로 쿠팡 검색 링크 생성
+# (주제명에서 핵심 키워드만 추출하여 검색 결과 품질을 높임)
+search_query = selected_theme.split(":")[0].split(" ")[0] if ":" in selected_theme else selected_theme.split(" ")[0]
+dynamic_link = generate_coupang_link(search_query)
+
+content = content.replace("{{COUPANG_LINK}}", dynamic_link)
+
+# 6. 파일 저장
 time_str = datetime.now().strftime('%H%M%S')
 slug = f"post-{today_date}-{time_str}"
 
@@ -134,3 +154,4 @@ with open(filepath, "w", encoding="utf-8") as f:
     f.write(content)
 
 print(f"\nSuccess: Post saved to {filepath}")
+print(f"Dynamic Link generated for: {search_query}")
