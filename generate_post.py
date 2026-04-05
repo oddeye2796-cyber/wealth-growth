@@ -17,8 +17,8 @@ if not api_key:
 # Fallback 모델 체인 — 첫 번째 모델이 Quota 초과 시 다음 모델로 자동 전환
 MODELS = [
     "gemini-2.0-flash",
-    "gemini-1.5-flash",
     "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-latest",
 ]
 
 # 모델별 최대 재시도 횟수
