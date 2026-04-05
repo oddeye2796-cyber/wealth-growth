@@ -6,17 +6,30 @@ import random
 import time
 import urllib.parse
 
-# 1. API 키 및 설정 로드
+# ============================================================
+# 1. 설정
+# ============================================================
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     print("Error: GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     exit(1)
 
-# API 엔드포인트 설정 (V1 Beta - 3.0 지원)
-model_name = "gemini-2.0-flash"
-api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+# Fallback 모델 체인 — 첫 번째 모델이 Quota 초과 시 다음 모델로 자동 전환
+MODELS = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash-lite",
+]
 
-# 2. 블로그 주제 리스트 풀 (무작위 선택)
+# 모델별 최대 재시도 횟수
+MAX_RETRIES_PER_MODEL = 4
+
+# 지수 백오프 대기 시간 (초) — 재시도할 때마다 대기 시간이 2배로 증가
+BACKOFF_BASE = 15  # 15s → 30s → 60s → 120s
+
+# ============================================================
+# 2. 블로그 주제 리스트 (무작위 선택)
+# ============================================================
 themes = [
     "부자들의 독서 습관과 마인드셋의 비밀",
     "아침 5시 미라클 모닝 기상과 자기계발의 기적",
@@ -32,22 +45,106 @@ themes = [
     "자기계발 독서법: 읽은 것을 실천으로 바꾸는 기술",
     "ETF 투자 입문: 직장인을 위한 실전 가이드",
     "습관의 힘: 작은 변화가 인생을 바꾸는 이유",
+    "경제적 자유를 위한 돈 관리 시스템 구축법",
+    "디지털 노마드 시대의 원격 부업 전략",
+    "주식 초보를 위한 분산 투자 포트폴리오 만들기",
+    "재테크 실패를 피하는 심리적 함정 5가지",
+    "하루 30분 자기계발 루틴의 복리 효과",
+    "부동산 없이 자산을 불리는 현실적인 방법",
 ]
 
 selected_theme = random.choice(themes)
 today_date = datetime.now().strftime('%Y-%m-%d')
 
-# 3. 쿠팡 파트너스 링크 생성 함수
-# AFFSDP: 상품 상세 페이지 (Product Details) - ID를 알 때 사용
-# AFFSRP: 상품 검색 결과 (Search Results) - 키워드로 검색할 때 사용
+# ============================================================
+# 3. 쿠팡 파트너스 링크 생성
+# ============================================================
 def generate_coupang_link(query, is_id=False):
     if is_id:
         return f"https://link.coupang.com/re/AFFSDP?lptag=AF2993619&subid=&pageKey={query}"
     else:
-        # 위젯으로 리다이렉트되는 것을 방지하기 위해 불필요한 파라미터 제외
         return f"https://link.coupang.com/re/AFFSRP?lptag=AF2993619&pageKey={urllib.parse.quote(query)}"
 
-# 4. 프롬프트 작성 (SEO 및 Markdown 구조화)
+# ============================================================
+# 4. Gemini API 호출 (Fallback + 지수 백오프)
+# ============================================================
+def call_gemini_api(prompt_text):
+    """
+    여러 모델을 순차적으로 시도하여 안정적으로 콘텐츠를 생성합니다.
+    - 모델별로 MAX_RETRIES_PER_MODEL회 재시도
+    - 429(Quota) 에러 시 지수 백오프 적용
+    - 모든 모델 실패 시에만 exit(1)
+    """
+    payload = {
+        "contents": [{"parts": [{"text": prompt_text}]}]
+    }
+    headers = {"Content-Type": "application/json"}
+
+    for model_idx, model_name in enumerate(MODELS):
+        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        print(f"\n🤖 모델 [{model_idx + 1}/{len(MODELS)}]: {model_name} 시도 중...")
+
+        for attempt in range(MAX_RETRIES_PER_MODEL):
+            try:
+                response = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=120)
+
+                # --- Quota 초과 (429) ---
+                if response.status_code == 429:
+                    wait_time = BACKOFF_BASE * (2 ** attempt)  # 15, 30, 60, 120초
+                    print(f"  ⏳ [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] Quota 초과. {wait_time}초 대기 후 재시도...")
+                    time.sleep(wait_time)
+                    continue
+
+                # --- 서버 에러 (500, 503 등) ---
+                if response.status_code >= 500:
+                    wait_time = BACKOFF_BASE * (2 ** attempt)
+                    print(f"  ⚠️ [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] 서버 에러 ({response.status_code}). {wait_time}초 대기...")
+                    time.sleep(wait_time)
+                    continue
+
+                # --- 모델 미지원 / 권한 없음 (404, 403) → 바로 다음 모델로 ---
+                if response.status_code in (404, 403):
+                    print(f"  ❌ 모델 '{model_name}' 사용 불가 (HTTP {response.status_code}). 다음 모델로 전환...")
+                    break
+
+                # --- 기타 클라이언트 에러 ---
+                response.raise_for_status()
+
+                # --- 성공 ---
+                result = response.json()
+                if 'candidates' in result and len(result['candidates']) > 0:
+                    content = result['candidates'][0]['content']['parts'][0]['text']
+                    print(f"  ✅ {model_name} 모델로 콘텐츠 생성 성공!")
+                    return content
+                else:
+                    # 안전 필터 등으로 빈 응답이 온 경우
+                    print(f"  ⚠️ [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] 빈 응답. 재시도...")
+                    time.sleep(5)
+                    continue
+
+            except requests.exceptions.Timeout:
+                print(f"  ⏰ [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] 타임아웃. 재시도...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.ConnectionError:
+                print(f"  🔌 [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] 연결 에러. 10초 대기...")
+                time.sleep(10)
+                continue
+            except Exception as e:
+                print(f"  ❗ [{attempt + 1}/{MAX_RETRIES_PER_MODEL}] 예상치 못한 에러: {e}")
+                if attempt == MAX_RETRIES_PER_MODEL - 1:
+                    break
+                time.sleep(5)
+                continue
+
+        print(f"  🔄 모델 '{model_name}' 모든 재시도 소진. 다음 모델로 전환...")
+
+    # 모든 모델 실패
+    return None
+
+# ============================================================
+# 5. 프롬프트 작성
+# ============================================================
 prompt = f"""
 당신은 최고의 자기계발 및 재테크 전문가이자 구글 검색 SEO 최적화 전문 블로거입니다.
 다음 주제에 대해 블로그 포스팅을 작성해주세요: "{selected_theme}"
@@ -78,49 +175,30 @@ prompt = f"""
 5. 금지 사항: 결과물을 ```markdown ... ``` 코드 블록 안에 넣지 마세요. 첫째 줄이 바로 `---` 속성으로 시작해야 합니다. <iframe> 태그는 절대 사용 금지.
 """
 
-print(f"[{today_date}] '{selected_theme}' 주제로 글쓰기를 AI에게 요청 중...")
+# ============================================================
+# 6. 메인 실행
+# ============================================================
+print(f"{'=' * 60}")
+print(f"📝 AI 블로그 자동 생성 시작")
+print(f"📅 날짜: {today_date}")
+print(f"🎯 주제: {selected_theme}")
+print(f"🤖 모델 체인: {' → '.join(MODELS)}")
+print(f"🔁 모델별 최대 재시도: {MAX_RETRIES_PER_MODEL}회 (지수 백오프)")
+print(f"{'=' * 60}")
 
-payload = {
-    "contents": [{"parts": [{"text": prompt}]}]
-}
-headers = {"Content-Type": "application/json"}
-
-# 재시도 로직 추가 (최대 3회)
-max_retries = 3
-content = None
-
-for i in range(max_retries):
-    try:
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-        
-        if response.status_code == 429:
-            print(f"[Retry {i+1}/{max_retries}] Quota exceeded. Waiting 15s...")
-            time.sleep(15)
-            continue
-            
-        response.raise_for_status()
-        result = response.json()
-        
-        if 'candidates' in result and len(result['candidates']) > 0:
-            content = result['candidates'][0]['content']['parts'][0]['text']
-            break
-        else:
-            raise Exception(f"AI response error: {result}")
-
-    except Exception as e:
-        if i == max_retries - 1:
-            print(f"Error: Final API request failed: {e}")
-            if 'response' in locals() and hasattr(response, 'text'):
-                print(f"Detail: {response.text}")
-            exit(1)
-        print(f"Warning: Temporary error ({e}). Retrying...")
-        time.sleep(5)
+content = call_gemini_api(prompt)
 
 if not content:
-    print("Error: Post generation failed.")
+    print(f"\n{'=' * 60}")
+    print("❌ 모든 모델에서 콘텐츠 생성 실패.")
+    print("   원인: Gemini API 할당량이 모든 모델에서 소진되었을 수 있습니다.")
+    print("   조치: Google AI Studio에서 할당량을 확인하세요.")
+    print(f"{'=' * 60}")
     exit(1)
 
-# AI가 간혹 코드 블록 마크업을 넣어서 출력하는 경우를 대비한 방어 로직
+# ============================================================
+# 7. 후처리 — 코드블록 마크업 제거
+# ============================================================
 content = content.strip()
 if content.startswith("```markdown"):
     content = content[len("```markdown"):]
@@ -132,20 +210,21 @@ if content.endswith("```"):
 
 content = content.strip()
 
-# 5. 동적 링크 치환
-# 주제 또는 도서명을 기반으로 쿠팡 검색 링크 생성
-# (주제명에서 핵심 키워드만 추출하여 검색 결과 품질을 높임)
+# ============================================================
+# 8. 쿠팡 파트너스 링크 치환
+# ============================================================
 search_query = selected_theme.split(":")[0].split(" ")[0] if ":" in selected_theme else selected_theme.split(" ")[0]
 
-# 특정 키워드의 경우 고정 상품 ID를 사용하여 전환율을 높임 (예시)
 if "그릇" in search_query or "부자의 그릇" in selected_theme:
-    dynamic_link = generate_coupang_link("4633275230", is_id=True) # '부자의 그릇' 고정 ID
+    dynamic_link = generate_coupang_link("4633275230", is_id=True)
 else:
     dynamic_link = generate_coupang_link(search_query)
 
 content = content.replace("{{COUPANG_LINK}}", dynamic_link)
 
-# 6. 파일 저장
+# ============================================================
+# 9. 파일 저장
+# ============================================================
 time_str = datetime.now().strftime('%H%M%S')
 slug = f"post-{today_date}-{time_str}"
 
@@ -157,5 +236,9 @@ filepath = os.path.join(output_dir, f"{slug}.md")
 with open(filepath, "w", encoding="utf-8") as f:
     f.write(content)
 
-print(f"\nSuccess: Post saved to {filepath}")
-print(f"Link generated for: {search_query} (Link: {dynamic_link})")
+print(f"\n{'=' * 60}")
+print(f"✅ 게시물 생성 완료!")
+print(f"📄 파일: {filepath}")
+print(f"🔗 쿠팡 링크 키워드: {search_query}")
+print(f"🔗 링크: {dynamic_link}")
+print(f"{'=' * 60}")
