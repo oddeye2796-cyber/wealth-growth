@@ -18,14 +18,15 @@ if not api_key:
 MODELS = [
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-1.5-flash",
 ]
 
 # 모델별 최대 재시도 횟수
-MAX_RETRIES_PER_MODEL = 4
+MAX_RETRIES_PER_MODEL = 5
 
 # 지수 백오프 대기 시간 (초) — 재시도할 때마다 대기 시간이 2배로 증가
-BACKOFF_BASE = 15  # 15s → 30s → 60s → 120s
+BACKOFF_BASE = 30  # 30s → 60s → 120s → 240s → 480s
 
 # ============================================================
 # 2. 블로그 주제 리스트 (무작위 선택)
@@ -185,6 +186,11 @@ print(f"🎯 주제: {selected_theme}")
 print(f"🤖 모델 체인: {' → '.join(MODELS)}")
 print(f"🔁 모델별 최대 재시도: {MAX_RETRIES_PER_MODEL}회 (지수 백오프)")
 print(f"{'=' * 60}")
+
+# Quota 충돌 방지: 0~120초 랜덤 대기 후 시작
+initial_delay = random.randint(0, 120)
+print(f"\n⏳ Quota 충돌 방지를 위해 {initial_delay}초 대기 후 시작...")
+time.sleep(initial_delay)
 
 content = call_gemini_api(prompt)
 

@@ -2,8 +2,8 @@ name: Generate Daily Blog Post
 
 on:
   schedule:
-    # 매일 UTC 기준 23시 = 한국 시간(KST) 오전 8시에 글 작성 실행
-    - cron: '0 23 * * *'
+    # 매일 UTC 기준 21시 = 한국 시간(KST) 오전 6시에 글 작성 실행 (API 트래픽 적은 시간)
+    - cron: '0 21 * * *'
   workflow_dispatch: # 직접 버튼을 눌러서 테스트 해볼 수 있도록 옵션 활성화
 
 permissions:
@@ -12,6 +12,7 @@ permissions:
 jobs:
   generate_post:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: Checkout Repository
