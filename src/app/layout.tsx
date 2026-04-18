@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from 'next/link';
 import NewsletterForm from '@/components/NewsletterForm';
+import VisitorCounter from '@/components/VisitorCounter';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -70,6 +71,7 @@ export default function RootLayout({
             </div>
             
             <div className="footer-bottom">
+              <VisitorCounter />
               <p>© {new Date().getFullYear()} Daily Better. All rights reserved.</p>
             </div>
           </div>

@@ -279,3 +279,87 @@ a:hover {
   color: #555;
   font-size: 0.875rem;
 }
+
+/* Visitor Counter Widget */
+.visitor-widget-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.visitor-widget {
+  padding: 1px;
+  background: linear-gradient(90deg, rgba(96,165,250,0.2), rgba(167,139,250,0.2));
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+.visitor-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px -2px rgba(167,139,250,0.15);
+}
+
+.visitor-widget-inner {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  padding: 0.6rem 1.5rem;
+  border-radius: 9999px;
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.visitor-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+
+.visitor-stat-icon.today {
+  color: #60a5fa; /* Blue */
+}
+
+.visitor-stat-icon.total {
+  color: #a78bfa; /* Purple */
+}
+
+.visitor-value {
+  color: #fff;
+  font-weight: 700;
+  margin-left: 0.2rem;
+}
+
+.visitor-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255,255,255,0.1);
+}
+
+.visitor-skeleton {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.visitor-skeleton-block {
+  width: 60px;
+  height: 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
