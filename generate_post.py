@@ -15,12 +15,12 @@ if not api_key:
     print("Error: GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
     exit(1)
 
-# Fallback 모델 체인 — 첫 번째 모델이 Quota 초과 시 다음 모델로 자동 전환
+# Fallback 모델 체인 — 무료 Tier에서 할당량이 큰 모델 순서로 시도
+# gemini-2.5-flash-lite: 1,000 RPD (가장 넉넉) → gemini-2.5-flash: 250 RPD → gemini-2.0-flash: 레거시
 MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-1.5-flash",
 ]
 
 # 모델별 최대 재시도 횟수
