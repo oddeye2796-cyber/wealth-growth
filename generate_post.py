@@ -432,3 +432,167 @@ print(f"📂 카테고리: {category}", flush=True)
 print(f"📖 추천 도서: {book_keyword}", flush=True)
 print(f"🔗 쿠팡 링크: {dynamic_link}", flush=True)
 print(f"{'=' * 60}", flush=True)
+
+# ============================================================
+# 11. 뉴스레터 발송 (Resend API)
+# ============================================================
+resend_api_key = os.environ.get("RESEND_API_KEY")
+resend_audience_id = os.environ.get("RESEND_AUDIENCE_ID")
+resend_from_email = os.environ.get("RESEND_FROM_EMAIL", "Daily Better <onboarding@resend.dev>")
+
+if resend_api_key and resend_audience_id:
+    print(f"\n{'─' * 40}", flush=True)
+    print(f"📨 [뉴스레터] 구독자에게 발송 중...", flush=True)
+    print(f"{'─' * 40}", flush=True)
+
+    try:
+        # 1) Frontmatter에서 title, excerpt 추출
+        import re as re_mod
+        title_match = re_mod.search(r'title:\s*["\'](.+?)["\']', content)
+        excerpt_match = re_mod.search(r'excerpt:\s*["\'](.+?)["\']', content)
+        post_title = title_match.group(1) if title_match else selected_theme
+        post_excerpt = excerpt_match.group(1) if excerpt_match else ""
+
+        # 2) 마크다운 본문을 간단한 HTML로 변환
+        # Frontmatter 제거
+        body_content = content
+        if body_content.startswith("---"):
+            second_dash = body_content.find("\n---", 3)
+            if second_dash != -1:
+                body_content = body_content[second_dash + 4:].strip()
+
+        # 기본 마크다운 → HTML 변환
+        html_body = body_content
+        # 헤더 변환
+        html_body = re_mod.sub(r'^### (.+)$', r'<h3 style="color: #60a5fa; margin-top: 24px;">\1</h3>', html_body, flags=re_mod.MULTILINE)
+        html_body = re_mod.sub(r'^## (.+)$', r'<h2 style="color: #fff; font-size: 20px; margin-top: 28px; border-bottom: 1px solid #333; padding-bottom: 8px;">\1</h2>', html_body, flags=re_mod.MULTILINE)
+        # 볼드
+        html_body = re_mod.sub(r'\*\*(.+?)\*\*', r'<strong style="color: #f0f0f0;">\1</strong>', html_body)
+        # 인용문
+        html_body = re_mod.sub(r'^> (.+)$', r'<blockquote style="border-left: 3px solid #60a5fa; padding-left: 16px; color: #aaa; font-style: italic; margin: 16px 0;">\1</blockquote>', html_body, flags=re_mod.MULTILINE)
+        # 리스트
+        html_body = re_mod.sub(r'^\* (.+)$', r'<li style="margin: 4px 0; color: #ccc;">\1</li>', html_body, flags=re_mod.MULTILINE)
+        html_body = re_mod.sub(r'^- (.+)$', r'<li style="margin: 4px 0; color: #ccc;">\1</li>', html_body, flags=re_mod.MULTILINE)
+        # 줄바꿈
+        html_body = html_body.replace('\n\n', '</p><p style="color: #ccc; line-height: 1.8;">')
+        html_body = f'<p style="color: #ccc; line-height: 1.8;">{html_body}</p>'
+        # 쿠팡 링크 HTML은 그대로 유지 (이미 HTML)
+
+        # 3) 뉴스레터 HTML 템플릿
+        post_url = f"https://wealth-growth-kohl.vercel.app/posts/{slug}"
+        newsletter_html = f"""
+        <div style="max-width: 600px; margin: 0 auto; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #0a0a0a; color: #e0e0e0; border-radius: 12px; overflow: hidden;">
+          <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d1b69 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #fff; font-size: 16px; margin: 0; letter-spacing: 2px;">DAILY BETTER</h1>
+            <p style="color: #93c5fd; font-size: 12px; margin-top: 4px;">어제보다 나은 하루</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <div style="background: #111; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+              <span style="color: #60a5fa; font-size: 12px; font-weight: bold;">{category}</span>
+              <span style="color: #666; font-size: 12px; margin-left: 8px;">{today_date}</span>
+            </div>
+            
+            <h2 style="color: #fff; font-size: 22px; line-height: 1.4; margin-top: 0;">{post_title}</h2>
+            
+            {f'<p style="color: #999; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">{post_excerpt}</p>' if post_excerpt else ''}
+            
+            <div style="border-top: 1px solid #222; padding-top: 20px;">
+              {html_body}
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="{post_url}" 
+                 style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                블로그에서 전체 글 읽기 →
+              </a>
+            </div>
+          </div>
+          
+          <div style="background: #111; padding: 20px; text-align: center;">
+            <p style="color: #666; font-size: 11px; margin: 0;">
+              © {datetime.now().year} Daily Better. All rights reserved.<br>
+              <a href="{{{{RESEND_UNSUBSCRIBE_URL}}}}" style="color: #888; text-decoration: underline;">수신거부</a>
+            </p>
+          </div>
+        </div>
+        """
+
+        # 4) Resend Audience에서 구독자 목록 가져오기
+        resend_headers = {
+            "Authorization": f"Bearer {resend_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        contacts_response = requests.get(
+            f"https://api.resend.com/audiences/{resend_audience_id}/contacts",
+            headers=resend_headers,
+            timeout=30
+        )
+
+        if contacts_response.status_code == 200:
+            contacts_data = contacts_response.json()
+            contacts = contacts_data.get("data", [])
+            
+            # 구독 중인 사람만 필터링
+            active_subscribers = [c for c in contacts if not c.get("unsubscribed", False)]
+            
+            if active_subscribers:
+                print(f"  📋 활성 구독자: {len(active_subscribers)}명", flush=True)
+
+                # 5) 배치 발송 (최대 100명씩)
+                batch_size = 100
+                total_sent = 0
+                total_failed = 0
+
+                for i in range(0, len(active_subscribers), batch_size):
+                    batch = active_subscribers[i:i + batch_size]
+                    
+                    emails_payload = []
+                    for contact in batch:
+                        emails_payload.append({
+                            "from": resend_from_email,
+                            "to": contact["email"],
+                            "subject": f"📝 {post_title}",
+                            "html": newsletter_html,
+                        })
+
+                    batch_response = requests.post(
+                        "https://api.resend.com/emails/batch",
+                        headers=resend_headers,
+                        data=json.dumps(emails_payload),
+                        timeout=60
+                    )
+
+                    if batch_response.status_code in (200, 201):
+                        total_sent += len(batch)
+                        print(f"  ✅ 배치 {i // batch_size + 1}: {len(batch)}명 발송 성공", flush=True)
+                    else:
+                        total_failed += len(batch)
+                        print(f"  ❌ 배치 {i // batch_size + 1}: 발송 실패 ({batch_response.status_code})", flush=True)
+                        print(f"     응답: {batch_response.text[:200]}", flush=True)
+
+                    # 배치 간 간격
+                    if i + batch_size < len(active_subscribers):
+                        time.sleep(1)
+
+                print(f"\n  📊 발송 결과: 성공 {total_sent}명 / 실패 {total_failed}명", flush=True)
+            else:
+                print(f"  ℹ️ 아직 구독자가 없습니다. 구독자가 등록되면 자동 발송됩니다.", flush=True)
+        else:
+            print(f"  ❌ 구독자 목록 조회 실패 (HTTP {contacts_response.status_code})", flush=True)
+            print(f"     응답: {contacts_response.text[:200]}", flush=True)
+
+    except Exception as e:
+        print(f"  ⚠️ 뉴스레터 발송 중 오류 (포스트 생성은 성공): {e}", flush=True)
+
+else:
+    if not resend_api_key:
+        print(f"\n⏭️ RESEND_API_KEY 미설정 — 뉴스레터 발송 건너뜀", flush=True)
+    if not resend_audience_id:
+        print(f"⏭️ RESEND_AUDIENCE_ID 미설정 — 뉴스레터 발송 건너뜀", flush=True)
+
+print(f"\n{'=' * 60}", flush=True)
+print(f"🎉 전체 작업 완료!", flush=True)
+print(f"{'=' * 60}", flush=True)
+

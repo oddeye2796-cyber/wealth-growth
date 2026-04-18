@@ -28,10 +28,12 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Generate Post with AI (Gemini)
+      - name: Generate Post with AI (Gemini) and Send Newsletter
         env:
-          # GitHub Secrets에 등록된 키를 불러와서 자동 주입
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_AUDIENCE_ID: ${{ secrets.RESEND_AUDIENCE_ID }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           PYTHONUNBUFFERED: "1"
         run: |
           python generate_post.py

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from 'next/link';
+import NewsletterForm from '@/components/NewsletterForm';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -65,19 +66,7 @@ export default function RootLayout({
                 </div>
               </div>
               
-              <div className="newsletter-section">
-                <h4>Newsletter</h4>
-                <p>프리미엄 재테크 인사이트를 이메일로 받아보세요.</p>
-                <form className="newsletter-form" action="#">
-                  <input 
-                    type="email" 
-                    placeholder="example@email.com" 
-                    required 
-                    aria-label="Newsletter Email"
-                  />
-                  <button type="submit">구독하기</button>
-                </form>
-              </div>
+              <NewsletterForm />
             </div>
             
             <div className="footer-bottom">
