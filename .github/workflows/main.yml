@@ -32,6 +32,7 @@ jobs:
         env:
           # GitHub Secrets에 등록된 키를 불러와서 자동 주입
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: |
           python generate_post.py
 
