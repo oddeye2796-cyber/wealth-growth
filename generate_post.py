@@ -314,18 +314,95 @@ if not content:
     exit(1)
 
 # ============================================================
-# 8. 후처리 — 코드블록 마크업 제거
+# 8. 후처리 — Frontmatter 교정 및 코드블록 제거
 # ============================================================
-content = content.strip()
-if content.startswith("```markdown"):
-    content = content[len("```markdown"):]
-elif content.startswith("```"):
-    content = content[len("```"):]
+def sanitize_frontmatter(text):
+    """
+    AI가 생성한 마크다운의 frontmatter를 항상 올바른 형식으로 교정합니다.
+    
+    처리하는 케이스:
+    1. ```markdown ... ``` 코드블록으로 감싸진 경우
+    2. ```yaml\n...\n``` 로 frontmatter가 감싸진 경우  
+    3. 'yaml\n' 으로 시작하는 경우 (코드블록 열기 없이 언어 태그만 있는 경우)
+    4. --- 가 빠진 경우
+    5. 정상적인 --- ... --- 형식
+    """
+    text = text.strip()
+    
+    # 1) 전체가 ```markdown ... ``` 로 감싸진 경우 제거
+    if text.startswith("```markdown"):
+        text = text[len("```markdown"):].strip()
+    elif text.startswith("```md"):
+        text = text[len("```md"):].strip()
+    
+    if text.endswith("```"):
+        text = text[:-3].strip()
+    
+    # 2) frontmatter 부분이 ```yaml ... ``` 로 감싸진 경우 교정
+    #    패턴: ```yaml\ntitle: ...\n```\n\n본문...
+    yaml_block_pattern = re.compile(r'^```ya?ml\s*\n(.*?)\n```', re.DOTALL)
+    match = yaml_block_pattern.match(text)
+    if match:
+        frontmatter_body = match.group(1).strip()
+        rest_of_content = text[match.end():].strip()
+        text = f"---\n{frontmatter_body}\n---\n\n{rest_of_content}"
+    
+    # 3) 'yaml\n' 으로 시작하는 경우 (``` 없이 언어 태그만 있는 케이스)
+    if text.startswith("yaml\n") or text.startswith("yaml\r\n"):
+        text = text[4:].strip()
+        # 이 경우 --- 도 빠져있을 가능성 높음
+        if not text.startswith("---"):
+            # frontmatter 끝을 찾기 (다음 빈 줄 또는 ## 시작 전까지)
+            lines = text.split('\n')
+            fm_end = 0
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith('##') or (stripped == '' and i > 0):
+                    fm_end = i
+                    break
+                # ``` 가 frontmatter 끝 표시로 사용된 경우
+                if stripped == '```':
+                    fm_end = i
+                    break
+            if fm_end > 0:
+                fm_lines = [l for l in lines[:fm_end] if l.strip() != '```']
+                body_lines = [l for l in lines[fm_end:] if l.strip() != '```']
+                text = f"---\n" + '\n'.join(fm_lines) + f"\n---\n\n" + '\n'.join(body_lines)
+    
+    # 4) --- 로 시작하지 않으면 frontmatter가 빠진 것 → 강제 추가
+    if not text.startswith("---"):
+        # title: 로 시작하는지 확인 (frontmatter 내용은 있지만 --- 가 없는 경우)
+        if text.startswith("title:") or text.startswith('"title') or text.startswith("'title"):
+            lines = text.split('\n')
+            fm_end = 0
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith('##') or (stripped == '' and i > 2):
+                    fm_end = i
+                    break
+            if fm_end > 0:
+                fm_lines = lines[:fm_end]
+                body_lines = lines[fm_end:]
+                text = f"---\n" + '\n'.join(fm_lines) + f"\n---\n\n" + '\n'.join(body_lines)
+    
+    # 5) 최종 검증: --- 로 시작하고 두 번째 --- 가 있는지 확인
+    if text.startswith("---"):
+        first_end = text.find('\n---', 3)
+        if first_end == -1:
+            # 두 번째 --- 가 없음 → 빈 줄이나 ## 앞에 삽입
+            lines = text.split('\n')
+            insert_at = len(lines)
+            for i in range(1, len(lines)):
+                stripped = lines[i].strip()
+                if stripped.startswith('##') or (stripped == '' and i > 2):
+                    insert_at = i
+                    break
+            lines.insert(insert_at, '---')
+            text = '\n'.join(lines)
+    
+    return text.strip()
 
-if content.endswith("```"):
-    content = content[:-3]
-
-content = content.strip()
+content = sanitize_frontmatter(content)
 
 # ============================================================
 # 9. 쿠팡 파트너스 링크 치환

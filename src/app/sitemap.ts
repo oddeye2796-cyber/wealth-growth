@@ -5,12 +5,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts();
   const baseUrl = 'https://wealth-growth.vercel.app'; // 실제 도메인으로 변경 가능
 
-  const postUrls = posts.map((post) => ({
-    url: `${baseUrl}/posts/${post.slug}`,
-    lastModified: new Date(post.date),
-    changeFrequency: 'monthly' as const,
-    priority: 0.8,
-  }));
+  const postUrls = posts.map((post) => {
+    let lastModified: Date;
+    try {
+      lastModified = new Date(post.date);
+      if (isNaN(lastModified.getTime())) {
+        lastModified = new Date();
+      }
+    } catch {
+      lastModified = new Date();
+    }
+    return {
+      url: `${baseUrl}/posts/${post.slug}`,
+      lastModified,
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    };
+  });
 
   return [
     {
